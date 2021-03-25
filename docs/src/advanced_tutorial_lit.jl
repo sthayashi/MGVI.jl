@@ -35,8 +35,7 @@ Random.seed!(84612);
 
 # The dataset, which is included with this repository, contains intervals in days between
 # disasters occuring at British coal mines between March 1851 and March 1962.
-# We split the entire time range into intervals of 365 days, so that the number of events
-# in each interval constitutes the measurement to be modeled.
+# We build a model by splitting the entire time range into intervals of 365 days.
 
 function read_coal_mining_data(filepath, binsize)
     init_year = empty
@@ -66,9 +65,9 @@ coal_mine_disaster_data = read_coal_mining_data(joinpath(@__DIR__, "coal_mining_
 # * `DATA_XLIM` specifies the time range of the data
 # * `GP_GRAIN_FACTOR` determines the numbers of finer bins which a data bin is split into.
 #    This is useful when there are several datasets defined on different grids.
-# * `GP_PADDING` adds empty paddings to the dataset. We use Fourier transform to sample from the Gaussian process
+# * `GP_PADDING` adds empty paddings to the dataset. We use a Fourier transform to sample from the Gaussian process
 #    with a finite correlation length. `GP_PADDING` helps us to ensure that periodic boundary conditions
-#    imposed by Fourier a transform won't affect the data region.
+#    imposed by a Fourier transform won't affect the data region.
 
 DATA_DIM = size(coal_mine_disaster_data, 1);
 
@@ -125,8 +124,8 @@ function assemble_paridx(;kwargs...)
 end;
 
 # MGVI is an iterative procedure, so we will need to introduce an initial guess for the state of the model.
-# We create one vector with size equal to the count of all parameters' `starting_point` and a NamedTuple
-# `PARDIX` that assigns names to the sub-regions in this vector of parameters. In the correct case:
+# We create a vector with size equal to the count of all parameters' `starting_point` and a NamedTuple
+# `PARDIX` that assigns names to the sub-regions in this vector. In the correct case:
 # * `gp_hyper` is two hyperparameters of the Gaussian process stored in the first two cells of the parameter vector
 # * `gp_latent` `_GP_DIM` are parameters used to define the particular realization of the gaussian process,
 #    stored at indices between `3` to `2 + _GP_DIM`.
@@ -150,7 +149,7 @@ k = collect(0:(_GP_DIM)÷2 -1);
 # MGVI assumes that all priors are distributed as standard normals `N(0, 1)`; thus,
 # to modify the shapes of the priors, we explicitly rescale them at the model implementation phase.
 #
-# We also exponentiate each prior before using it for tuning the squared exponential shape. In doing so,
+# We also exponentiate each prior before using it to tune the squared exponential shape. In doing so,
 # we ensure only positive values for the kernel's hyperparameters.
 #
 # Actually, for the sake of numeric stability we model already square root of the covariance.
@@ -172,8 +171,8 @@ ht = FFTW.plan_r2r(zeros(_GP_DIM), FFTW.DHT);
 
 # Before we proceed, let's have a brief look at the kernel's shape. Below
 # we plot the kernel in the coordinate space `K(r) = K(x2 - x1)` as a function of time in years
-# between two points. The further we go along the `x`-axis, the time interval will increase, and the
-# the covariance between two points in time will decreases.
+# between two points. As we go further along the `x`-axis, the time interval will increase, and
+# the covariance will decrease.
 
 function plot_kernel_model(p, width; plot_args=(;))
     xs = collect(1:Int(floor(width/_GP_BINSIZE)))
@@ -185,7 +184,7 @@ plot_kernel_model(starting_point, 20)
 
 # To make it even more visual, we also plot the structure of the covariance matrix as a heatmap.
 # We see that the finite correlation length shows up as a band around the diagonal. We also
-# see small artifacts in the off-diagonal corners. These come from the assumption that the
+# see small artifacts in the antidiagonal corners. These come from the assumption that the
 # kernel is periodic.
 
 function plot_kernel_matrix(p)
@@ -249,7 +248,7 @@ function agg_lambdas(lambdas)
     xs, gps
 end;
 
-# Finally, we arrive to the model definition assembled from the building blocks we defined above:
+# Finally, we define the model by using the building blocks defined above:
 # * `gp_sample` sample from the Gaussian process with defined `kernel_model` covariance
 # * `poisson_gp_link` ensures Gaussian process is positive
 # * `agg_lambdas` integrates Gaussian process over each data bin to turn it into a Poisson rate for each bin
@@ -424,7 +423,7 @@ first_iteration = mgvi_kl_optimize_step(Random.GLOBAL_RNG,
                                         optim_options=Optim.Options(iterations=1, show_trace=false),
                                         residual_sampler_options=(;cg_params=(;abstol=1E-2,verbose=false)));
 
-# We again plot data and the Poisson rate. Then we again show the Gaussian process with padding.
+# We again plot data and the Poisson rate. We again show the Gaussian process with padding.
 # After one iteration the Poisson rate doesn't seem to get much closer to the data.
 
 plot()
@@ -444,7 +443,7 @@ plot()
 plot_kernel_model(first_iteration.result, 20; plot_args=(;label="kernel model"))
 plot_kernel_mgvi_samples(first_iteration, 20)
 
-# In order to visualize convergence, we prepare a few functions to compute,
+# In order to visualize convergence we prepare a few functions to compute,
 # store and plot the average posterior likelihood of.
 
 function compute_avg_likelihood(model, samples, data)
